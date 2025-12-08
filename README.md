@@ -41,7 +41,57 @@ tar -xzf steamcmd_linux.tar.gz
 
 将您的 `config_player.xml` 文件（位于 Barotrauma 配置目录下）复制到项目目录。
 
-### 4. 运行脚本
+### 4. 配置脚本（可选）
+
+脚本使用 `config.json` 文件进行配置。如果不存在，会自动创建默认配置。
+
+**默认配置文件内容:**
+```json
+{
+  "steamcmd": {
+    "path": "steamcmd"
+  },
+  "files": {
+    "config_file": "config_player.xml",
+    "workshop_path": "LocalMods"
+  },
+  "download": {
+    "timeout": 300
+  }
+}
+```
+
+**自定义 SteamCMD 路径:**
+编辑 `config.json` 文件，修改 `steamcmd.path` 为您的 SteamCMD 实际路径：
+
+**Windows 示例:**
+```json
+{
+  "steamcmd": {
+    "path": "C:\\Program Files (x86)\\Steam\\steamcmd.exe"
+  }
+}
+```
+
+**macOS 示例:**
+```json
+{
+  "steamcmd": {
+    "path": "/opt/homebrew/bin/steamcmd"
+  }
+}
+```
+
+**Linux 示例:**
+```json
+{
+  "steamcmd": {
+    "path": "/usr/bin/steamcmd"
+  }
+}
+```
+
+### 5. 运行脚本
 
 ```bash
 python main.py
@@ -83,7 +133,28 @@ python main.py
 1. **解析配置**: 使用 XML 解析读取 `config_player.xml` 文件
 2. **提取ID**: 正则表达式匹配 `LocalMods/{ID}/filelist.xml` 格式的路径
 3. **检查更新**: 检查 LocalMods 目录下的模组是否存在 filelist.xml
-4. **下载更新**: 使用 SteamCMD 的 `workshop_download_item` 命令下载/更新模组
+4. **下载更新**: 使用 SteamCMD 的 `workshop_download_item` 命令下载模组到 `LocalMods/steamapps/workshop/content/274900/{ID}/`
+5. **整理文件**: 将下载的文件移动到 `LocalMods/{ID}/` 目录，清理临时文件
+
+## 目录结构说明
+
+下载过程会产生以下目录结构：
+
+```
+LocalMods/
+├── 2559634234/          # Barotrauma 期望的最终位置
+│   ├── filelist.xml
+│   └── ...
+└── steamapps/           # SteamCMD 临时目录（下载完成后会清理）
+    └── workshop/
+        └── content/
+            └── 274900/
+                └── 2559634234/  # SteamCMD 实际下载位置
+                    ├── filelist.xml
+                    └── ...
+```
+
+脚本会自动将文件从临时目录移动到最终位置，并清理 `steamapps` 目录。
 
 ## 目录结构
 
@@ -104,7 +175,18 @@ LocalMods/
 
 ### 找不到 steamcmd
 
-确保 SteamCMD 已正确安装并在 PATH 中，或者修改 `main.py` 中的 `steamcmd_path` 变量指向正确的路径。
+1. **检查配置文件**: 打开 `config.json` 文件，确认 `steamcmd.path` 设置正确
+2. **添加到 PATH**: 将 SteamCMD 添加到系统 PATH 中，然后使用 `"path": "steamcmd"`
+3. **使用绝对路径**: 直接在配置文件中设置 SteamCMD 的完整路径
+
+### 模组下载后不在 LocalMods 目录
+
+**已修复**: 脚本会自动处理 SteamCMD 的下载路径。下载的文件会从 `LocalMods/steamapps/workshop/content/274900/{mod_id}/` 自动移动到 `LocalMods/{mod_id}/`，并清理临时目录。
+
+如果遇到问题：
+1. 检查脚本输出中是否有移动文件的提示
+2. 确认对当前目录有写权限
+3. 查看是否有错误信息
 
 ### 下载失败
 

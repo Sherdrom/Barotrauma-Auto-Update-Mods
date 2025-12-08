@@ -16,9 +16,10 @@ The user is a Chinese user, please respond in Chinese.
 
 ## Core Functions
 
+- `load_config(config_path="config.json")` - 加载JSON配置文件
 - `parse_config_for_mod_ids(config_path)` - 解析XML提取模组ID
 - `check_mod_updates(mod_ids, workshop_path)` - 检查需要更新的模组
-- `download_mod_steamcmd(mod_id, workshop_path, steamcmd_path)` - 使用SteamCMD下载模组
+- `download_mod_steamcmd(mod_id, workshop_path, steamcmd_path, timeout)` - 使用SteamCMD下载模组
 - `main()` - 主执行流程
 
 ## Development
@@ -33,15 +34,40 @@ python main.py
 python3 -c "from main import parse_config_for_mod_ids; print(parse_config_for_mod_ids('config_player.xml'))"
 ```
 
+**Test config loading:**
+```bash
+python3 -c "from main import load_config; import json; print(json.dumps(load_config(), indent=2, ensure_ascii=False))"
+```
+
 **Requirements:**
 - Python 3.6+
-- SteamCMD installed and in PATH
+- SteamCMD installed and configured in config.json
 - config_player.xml in project directory
+
+## Configuration
+
+Uses `config.json` for settings:
+
+```json
+{
+  "steamcmd": {
+    "path": "steamcmd"
+  },
+  "files": {
+    "config_file": "config_player.xml",
+    "workshop_path": "LocalMods"
+  },
+  "download": {
+    "timeout": 300
+  }
+}
+```
 
 ## Architecture
 
 - Single-file Python script (`main.py`)
-- Uses `xml.etree.ElementTree` for XML parsing
+- Uses `xml` for XML parsing.etree.ElementTree
+- Uses `json` for configuration management
 - Uses `subprocess` to call SteamCMD
 - Downloads to `LocalMods/` directory structure matching game format
 
@@ -53,6 +79,7 @@ python3 -c "from main import parse_config_for_mod_ids; print(parse_config_for_mo
 ## Important Files
 
 - `main.py` - Main script with all functionality
+- `config.json` - Configuration file for customizing paths and settings
 - `config_player.xml` - Barotrauma config file containing mod list
 - `README.md` - Detailed usage documentation
 
