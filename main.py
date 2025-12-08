@@ -158,30 +158,66 @@ def download_mod_steamcmd(mod_id, workshop_path, steamcmd_path="steamcmd", timeo
         return False
 
 
-def check_mod_updates(mod_ids, workshop_path, config_file_path):
+def get_workshop_update_time(mod_id, steamcmd_path, timeout=30):
+    """
+    获取 Steam 创意工坊中模组的更新时间
+
+    Args:
+        mod_id: Steam 创意工坊模组ID
+        steamcmd_path: SteamCMD 可执行文件路径
+        timeout: 查询超时时间（秒）
+
+    Returns:
+        float: 模组的更新时间戳（Unix 时间戳），如果获取失败返回 0
+    """
+    cmd = [
+        steamcmd_path,
+        "+login", "anonymous",
+        "+workshop_info", "602960", mod_id,
+        "+quit"
+    ]
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+
+        if result.returncode == 0:
+            # 解析输出查找时间戳
+            # SteamCMD 输出格式类似: "last_updated" "1701234567"
+            output = result.stdout
+            # 匹配格式: "last_updated" "数字"
+            match = re.search(r'"last_updated"\s+"(\d+)"', output)
+            if match:
+                return float(match.group(1))
+    except Exception as e:
+        print(f"    获取模组 {mod_id} 更新信息失败: {e}")
+
+    return 0
+
+
+def check_mod_updates(mod_ids, workshop_path, steamcmd_path):
     """
     检查模组更新
 
     基于以下规则判断：
     1. 模组目录不存在 → 需要下载
-    2. filelist.xml 不存在 → 需要下载
-    3. 模组目录的修改时间早于配置文件 → 需要更新
-    4. filelist.xml 的修改时间早于配置文件 → 需要更新
+    2. filelist.xml 不存在 → 需要更新
+    3. 本地 filelist.xml 修改时间早于 Steam 创意工坊更新时间 → 需要更新
 
     Args:
         mod_ids: 模组ID列表
         workshop_path: 创意工坊内容路径
-        config_file_path: Barotrauma 配置文件路径
+        steamcmd_path: SteamCMD 可执行文件路径
 
     Returns:
         list: 需要更新的模组ID列表
     """
     needs_update = []
     workshop = Path(workshop_path)
-    config_file = Path(config_file_path)
-
-    # 获取配置文件的修改时间
-    config_mtime = config_file.stat().st_mtime if config_file.exists() else 0
 
     for mod_id in mod_ids:
         mod_path = workshop / mod_id
@@ -199,13 +235,18 @@ def check_mod_updates(mod_ids, workshop_path, config_file_path):
             needs_update.append(mod_id)
             continue
 
-        # 检查3: 比较修改时间
-        mod_mtime = mod_path.stat().st_mtime
-        filelist_mtime = filelist_path.stat().st_mtime
+        # 检查3: 获取 Steam 创意工坊的模组更新时间
+        remote_update_time = get_workshop_update_time(mod_id, steamcmd_path)
+        if remote_update_time == 0:
+            # 无法获取远程更新时间，跳过检查
+            print(f"  模组 {mod_id}: 无法获取更新信息，跳过检查")
+            continue
 
-        # 如果配置文件比模组目录或 filelist.xml 更新，说明模组需要更新
-        if config_mtime > mod_mtime or config_mtime > filelist_mtime:
-            print(f"  模组 {mod_id}: 配置已更新，需要重新下载")
+        # 检查4: 比较本地和远程更新时间
+        local_mtime = filelist_path.stat().st_mtime
+
+        if remote_update_time > local_mtime:
+            print(f"  模组 {mod_id}: Steam 有更新，需要下载")
             needs_update.append(mod_id)
         else:
             print(f"  模组 {mod_id}: 已是最新")
@@ -250,7 +291,7 @@ def main():
 
     # 检查需要更新的模组
     print("检查模组更新状态...")
-    update_list = check_mod_updates(mod_ids, workshop_path, config_file)
+    update_list = check_mod_updates(mod_ids, workshop_path, steamcmd_path)
 
     if update_list:
         print(f"发现 {len(update_list)} 个模组需要更新或下载\n")
