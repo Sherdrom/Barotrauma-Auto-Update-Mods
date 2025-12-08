@@ -12,6 +12,7 @@ import re
 import sys
 import json
 import shutil
+import requests
 from pathlib import Path
 
 
@@ -115,7 +116,7 @@ def download_mod_steamcmd(mod_id, workshop_path, steamcmd_path="steamcmd", timeo
         steamcmd_path,
         "+force_install_dir", str(workshop),
         "+login", "anonymous",
-        "+workshop_download_item", "602960", mod_id,
+        "+workshop_download_item", "602960", mod_id, "validate",
         "+quit"
     ]
 
@@ -158,48 +159,50 @@ def download_mod_steamcmd(mod_id, workshop_path, steamcmd_path="steamcmd", timeo
         return False
 
 
-def get_workshop_update_time(mod_id, steamcmd_path, timeout=30):
+def get_workshop_update_time(mod_id, timeout=30):
     """
     获取 Steam 创意工坊中模组的更新时间
 
+    使用 Steam Web API: https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/
+
     Args:
         mod_id: Steam 创意工坊模组ID
-        steamcmd_path: SteamCMD 可执行文件路径
         timeout: 查询超时时间（秒）
 
     Returns:
         float: 模组的更新时间戳（Unix 时间戳），如果获取失败返回 0
     """
-    cmd = [
-        steamcmd_path,
-        "+login", "anonymous",
-        "+workshop_info", "602960", mod_id,
-        "+quit"
-    ]
+    api_url = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/"
+
+    data = {
+        "itemcount": "1",
+        "publishedfileids[0]": mod_id
+    }
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
 
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=timeout
-        )
+        result = requests.post(api_url, data=data, headers=headers, timeout=timeout)
 
-        if result.returncode == 0:
-            # 解析输出查找时间戳
-            # SteamCMD 输出格式类似: "last_updated" "1701234567"
-            output = result.stdout
-            # 匹配格式: "last_updated" "数字"
-            match = re.search(r'"last_updated"\s+"(\d+)"', output)
-            if match:
-                return float(match.group(1))
+        if result.status_code == 200:
+            data = result.json()
+            if 'response' in data and 'publishedfiledetails' in data['response']:
+                publishedfiledetails = data['response']['publishedfiledetails']
+                if publishedfiledetails:
+                    moddetails = publishedfiledetails[0]
+                    if 'time_updated' in moddetails:
+                        return float(moddetails['time_updated'])
+                    elif 'time_created' in moddetails:
+                        return float(moddetails['time_created'])
     except Exception as e:
         print(f"    获取模组 {mod_id} 更新信息失败: {e}")
 
     return 0
 
 
-def check_mod_updates(mod_ids, workshop_path, steamcmd_path):
+def check_mod_updates(mod_ids, workshop_path):
     """
     检查模组更新
 
@@ -211,7 +214,6 @@ def check_mod_updates(mod_ids, workshop_path, steamcmd_path):
     Args:
         mod_ids: 模组ID列表
         workshop_path: 创意工坊内容路径
-        steamcmd_path: SteamCMD 可执行文件路径
 
     Returns:
         list: 需要更新的模组ID列表
@@ -236,7 +238,7 @@ def check_mod_updates(mod_ids, workshop_path, steamcmd_path):
             continue
 
         # 检查3: 获取 Steam 创意工坊的模组更新时间
-        remote_update_time = get_workshop_update_time(mod_id, steamcmd_path)
+        remote_update_time = get_workshop_update_time(mod_id)
         if remote_update_time == 0:
             # 无法获取远程更新时间，跳过检查
             print(f"  模组 {mod_id}: 无法获取更新信息，跳过检查")
@@ -291,7 +293,7 @@ def main():
 
     # 检查需要更新的模组
     print("检查模组更新状态...")
-    update_list = check_mod_updates(mod_ids, workshop_path, steamcmd_path)
+    update_list = check_mod_updates(mod_ids, workshop_path)
 
     if update_list:
         print(f"发现 {len(update_list)} 个模组需要更新或下载\n")

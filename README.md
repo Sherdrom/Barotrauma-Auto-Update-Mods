@@ -9,12 +9,18 @@
 - 自动下载缺失的模组
 - 自动更新已有模组
 - 使用 SteamCMD 进行下载，保证下载的模组是最新版本
+- 使用 Steam Web API 查询模组更新时间，确保准确检测更新
 
 ## 使用方法
 
 ### 1. 安装依赖
 
 确保系统已安装 Python 3.6+。
+
+安装 Python 依赖：
+```bash
+pip3 install requests
+```
 
 ### 2. 安装 SteamCMD
 
@@ -140,7 +146,7 @@ python main.py
 3. **智能检查更新**: 对每个模组进行多级检查
    - 检查模组目录是否存在
    - 检查 filelist.xml 是否存在
-   - 获取 Steam 创意工坊的模组更新时间（使用 `workshop_info` 命令）
+   - 获取 Steam 创意工坊的模组更新时间（使用 Steam Web API）
    - 比较本地文件修改时间与远程更新时间
    - 提供详细的检查结果
 4. **绝对路径**: 将相对路径转换为绝对路径，确保 SteamCMD 下载到正确位置
@@ -163,8 +169,9 @@ python main.py
    - 示例: `模组 2559634234: filelist.xml 不存在，需要更新`
 
 3. **获取 Steam 创意工坊更新时间**
-   - 使用 SteamCMD 的 `workshop_info` 命令查询模组信息
-   - 解析 `last_updated` 字段获取远程更新时间
+   - 使用 Steam Web API: `https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/`
+   - 查询 `time_updated` 字段获取远程更新时间
+   - 准确获取模组在 Steam 创意工坊的真实更新日期
 
 4. **时间戳比较检查**
    - 本地 filelist.xml 修改时间 < Steam 创意工坊更新时间 → 需要更新
@@ -200,6 +207,28 @@ python main.py
 - 用户可能很久没有修改配置文件，但 Steam 上的模组可能已经更新
 - 正确的判断依据应该是模组在 Steam 创意工坊的最后更新时间
 - 这样可以准确检测模组更新，避免遗漏
+
+### 技术说明：使用 Steam Web API
+
+脚本使用 Steam Web API 查询模组更新时间，而不是 SteamCMD 的 `workshop_info` 命令：
+
+**API 端点**: `https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/`
+
+**优势**:
+- SteamCMD 没有 `workshop_info` 命令
+- Web API 响应更快，格式更标准
+- 可以获取模组的详细元数据（标题、描述、大小等）
+- 不需要启动 SteamCMD 进程，节省系统资源
+
+**实现**:
+```python
+api_url = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/"
+data = {
+    "itemcount": "1",
+    "publishedfileids[0]": mod_id
+}
+result = requests.post(api_url, data=data, headers=headers, timeout=30)
+```
 
 ### 优势
 
