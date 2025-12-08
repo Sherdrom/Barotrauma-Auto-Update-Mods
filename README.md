@@ -126,6 +126,9 @@ python main.py
 === 下载完成 ===
 成功: 5
 失败: 0
+
+正在清理临时文件...
+✓ 临时文件清理完成
 ```
 
 ## 工作原理
@@ -133,8 +136,21 @@ python main.py
 1. **解析配置**: 使用 XML 解析读取 `config_player.xml` 文件
 2. **提取ID**: 正则表达式匹配 `LocalMods/{ID}/filelist.xml` 格式的路径
 3. **检查更新**: 检查 LocalMods 目录下的模组是否存在 filelist.xml
-4. **下载更新**: 使用 SteamCMD 的 `workshop_download_item` 命令下载模组到 `LocalMods/steamapps/workshop/content/274900/{ID}/`
-5. **整理文件**: 将下载的文件移动到 `LocalMods/{ID}/` 目录，清理临时文件
+4. **绝对路径**: 将相对路径转换为绝对路径，确保 SteamCMD 下载到正确位置
+5. **下载更新**: 使用 SteamCMD 的 `workshop_download_item` 命令下载模组到 `LocalMods/steamapps/workshop/content/602960/{ID}/`
+6. **整理文件**: 将下载的文件移动到 `LocalMods/{ID}/` 目录
+7. **清理临时文件**: 所有模组下载完成后，统一清理 `steamapps` 临时目录
+
+## 重要说明：路径处理
+
+⚠️ **为什么需要绝对路径？**
+
+SteamCMD 的 `+force_install_dir` 参数如果使用相对路径，会相对于 SteamCMD 所在目录而不是项目目录。这会导致模组下载到错误的位置。
+
+✅ **脚本自动处理**:
+- 自动将配置中的相对路径转换为绝对路径
+- 确保下载到项目目录下的 `LocalMods` 文件夹
+- 无需用户手动配置绝对路径
 
 ## 目录结构说明
 
@@ -145,16 +161,16 @@ LocalMods/
 ├── 2559634234/          # Barotrauma 期望的最终位置
 │   ├── filelist.xml
 │   └── ...
-└── steamapps/           # SteamCMD 临时目录（下载完成后会清理）
+└── steamapps/           # SteamCMD 临时目录（下载过程中存在）
     └── workshop/
         └── content/
-            └── 274900/
+            └── 602960/
                 └── 2559634234/  # SteamCMD 实际下载位置
                     ├── filelist.xml
                     └── ...
 ```
 
-脚本会自动将文件从临时目录移动到最终位置，并清理 `steamapps` 目录。
+脚本会自动将文件从临时目录移动到最终位置。**所有模组下载完成后，`steamapps` 目录会被完全清理**，最终只保留模组文件。
 
 ## 目录结构
 
@@ -181,11 +197,15 @@ LocalMods/
 
 ### 模组下载后不在 LocalMods 目录
 
-**已修复**: 脚本会自动处理 SteamCMD 的下载路径。下载的文件会从 `LocalMods/steamapps/workshop/content/274900/{mod_id}/` 自动移动到 `LocalMods/{mod_id}/`，并清理临时目录。
+**问题**: 模组下载到了其他位置的 LocalMods 文件夹
 
-如果遇到问题：
-1. 检查脚本输出中是否有移动文件的提示
-2. 确认对当前目录有写权限
+**原因**: SteamCMD 使用相对路径时会相对于 SteamCMD 所在目录，而不是项目目录。
+
+**解决方案**: ✅ **已修复** - 脚本现在会自动将相对路径转换为绝对路径，确保下载到项目目录下的 LocalMods 中。
+
+如果仍然遇到问题：
+1. 检查脚本输出中的 "模组下载目录" 是否显示为绝对路径
+2. 确认对项目目录有写权限
 3. 查看是否有错误信息
 
 ### 下载失败

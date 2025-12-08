@@ -95,7 +95,7 @@ def download_mod_steamcmd(mod_id, workshop_path, steamcmd_path="steamcmd", timeo
 
     Args:
         mod_id: Steam 创意工坊模组ID
-        workshop_path: 创意工坊内容路径
+        workshop_path: 创意工坊内容路径（绝对路径）
         steamcmd_path: SteamCMD 可执行文件路径
         timeout: 下载超时时间（秒）
 
@@ -105,9 +105,9 @@ def download_mod_steamcmd(mod_id, workshop_path, steamcmd_path="steamcmd", timeo
     workshop = Path(workshop_path)
     workshop.mkdir(parents=True, exist_ok=True)
 
-    # SteamCMD 会下载到: workshop/steamapps/workshop/content/274900/{mod_id}/
+    # SteamCMD 会下载到: workshop/steamapps/workshop/content/602960/{mod_id}/
     # 我们需要将内容移动到: workshop/{mod_id}/
-    steamcmd_download_path = workshop / "steamapps" / "workshop" / "content" / "274900" / mod_id
+    steamcmd_download_path = workshop / "steamapps" / "workshop" / "content" / "602960" / mod_id
     final_mod_path = workshop / mod_id
 
     # SteamCMD 下载命令
@@ -115,7 +115,7 @@ def download_mod_steamcmd(mod_id, workshop_path, steamcmd_path="steamcmd", timeo
         steamcmd_path,
         "+force_install_dir", str(workshop),
         "+login", "anonymous",
-        "+workshop_download_item", "274900", mod_id,
+        "+workshop_download_item", "602960", mod_id,
         "+quit"
     ]
 
@@ -143,20 +143,6 @@ def download_mod_steamcmd(mod_id, workshop_path, steamcmd_path="steamcmd", timeo
                         else:
                             dest.unlink()
                     item.rename(dest)
-
-                # 删除空的源目录
-                if steamcmd_download_path.exists():
-                    shutil.rmtree(steamcmd_download_path, ignore_errors=True)
-
-                # 清理临时目录（只清理空的父目录）
-                temp_dir = steamcmd_download_path.parent
-                while temp_dir != workshop and temp_dir.exists():
-                    try:
-                        temp_dir.rmdir()  # 只有目录为空时才能删除
-                        temp_dir = temp_dir.parent
-                    except OSError:
-                        # 目录不为空，停止清理
-                        break
 
             print(f"✓ 模组 {mod_id} 下载成功")
             return True
@@ -206,6 +192,9 @@ def main():
     steamcmd_path = config["steamcmd"]["path"]
     timeout = config["download"]["timeout"]
 
+    # 将相对路径转换为绝对路径（重要！）
+    workshop_path = str(Path(workshop_path).resolve())
+
     print(f"使用配置文件: config.json")
     print(f"SteamCMD 路径: {steamcmd_path}")
     print(f"模组下载目录: {workshop_path}")
@@ -250,6 +239,13 @@ def main():
     print("=== 下载完成 ===")
     print(f"成功: {success_count}")
     print(f"失败: {fail_count}")
+
+    # 清理临时目录
+    steamapps_dir = Path(workshop_path) / "steamapps"
+    if steamapps_dir.exists():
+        print("\n正在清理临时文件...")
+        shutil.rmtree(steamapps_dir, ignore_errors=True)
+        print("✓ 临时文件清理完成")
 
     if fail_count > 0:
         sys.exit(1)
