@@ -247,8 +247,39 @@ SteamCMD 的 `+force_install_dir` 参数如果使用相对路径，会相对于 
 
 ✅ **脚本自动处理**:
 - 自动将配置中的相对路径转换为绝对路径
-- 确保下载到项目目录下的 `LocalMods` 文件夹
-- 无需用户手动配置绝对路径
+- **相对路径以配置文件位置为基准**，不受当前工作目录影响
+- 无论在哪个目录运行脚本，路径都能正确解析
+- 支持在 `config.json` 中使用相对路径或绝对路径
+
+### 路径解析规则
+
+脚本会智能处理路径：
+
+1. **相对路径**: 相对于 `config.json` 文件所在目录
+   ```json
+   // config.json 在 /path/to/project/config.json
+   // "workshop_path": "LocalMods"
+   // 解析为: /path/to/project/LocalMods
+   ```
+
+2. **绝对路径**: 直接使用
+   ```json
+   // "workshop_path": "/absolute/path/to/LocalMods"
+   // 解析为: /absolute/path/to/LocalMods
+   ```
+
+3. **运行目录无关**: 可以在任何目录运行脚本
+   ```bash
+   cd /tmp
+   python /path/to/project/main.py
+   # 仍然正确解析路径
+   ```
+
+**输出示例**:
+```
+使用配置文件: /path/to/project/config.json
+模组下载目录: /path/to/project/LocalMods
+```
 
 ## 目录结构说明
 

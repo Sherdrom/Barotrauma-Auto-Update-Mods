@@ -24,7 +24,7 @@ def load_config(config_path="config.json"):
         config_path: 配置文件路径
 
     Returns:
-        dict: 配置字典，如果文件不存在则返回默认配置
+        tuple: (配置字典, 配置文件绝对路径)
     """
     default_config = {
         "steamcmd": {
@@ -39,9 +39,12 @@ def load_config(config_path="config.json"):
         }
     }
 
-    if not os.path.exists(config_path):
+    # 获取配置文件的绝对路径
+    config_path = Path(config_path).resolve()
+
+    if not config_path.exists():
         print(f"配置文件 {config_path} 不存在，使用默认配置")
-        return default_config
+        return default_config, config_path
 
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -54,11 +57,11 @@ def load_config(config_path="config.json"):
                 for key in default_config[section]:
                     if key not in config[section]:
                         config[section][key] = default_config[section][key]
-        return config
+        return config, config_path
     except Exception as e:
         print(f"加载配置文件失败: {e}")
         print("使用默认配置")
-        return default_config
+        return default_config, config_path
 
 
 def parse_config_for_mod_ids(config_path):
@@ -260,7 +263,7 @@ def main():
     """主函数"""
     # 加载配置
     print("=== Barotrauma 模组自动更新工具 ===\n")
-    config = load_config()
+    config, config_path = load_config()
 
     # 从配置中获取设置
     config_file = config["files"]["config_file"]
@@ -268,22 +271,33 @@ def main():
     steamcmd_path = config["steamcmd"]["path"]
     timeout = config["download"]["timeout"]
 
-    # 将相对路径转换为绝对路径（重要！）
-    workshop_path = str(Path(workshop_path).resolve())
+    # 以配置文件所在目录为基准解析相对路径
+    config_dir = config_path.parent
+    if not Path(workshop_path).is_absolute():
+        # 相对路径：相对于配置文件的位置
+        workshop_path = str((config_dir / workshop_path).resolve())
+    else:
+        # 绝对路径：直接使用
+        workshop_path = str(Path(workshop_path).resolve())
 
-    print(f"使用配置文件: config.json")
+    print(f"使用配置文件: {config_path}")
     print(f"SteamCMD 路径: {steamcmd_path}")
     print(f"模组下载目录: {workshop_path}")
     print(f"下载超时: {timeout} 秒\n")
 
     # 检查配置文件是否存在
-    if not os.path.exists(config_file):
-        print(f"错误: 找不到配置文件 {config_file}")
+    config_file_path = Path(config_file)
+    if not config_file_path.is_absolute():
+        config_file_path = config_dir / config_file
+    config_file_path = config_file_path.resolve()
+
+    if not config_file_path.exists():
+        print(f"错误: 找不到配置文件 {config_file_path}")
         sys.exit(1)
 
     # 解析配置文件
-    print(f"正在解析配置文件: {config_file}")
-    mod_ids = parse_config_for_mod_ids(config_file)
+    print(f"正在解析配置文件: {config_file_path}")
+    mod_ids = parse_config_for_mod_ids(str(config_file_path))
 
     if not mod_ids:
         print("未找到任何模组配置")
