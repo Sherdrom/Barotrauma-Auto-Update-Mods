@@ -158,24 +158,57 @@ def download_mod_steamcmd(mod_id, workshop_path, steamcmd_path="steamcmd", timeo
         return False
 
 
-def check_mod_updates(mod_ids, workshop_path):
+def check_mod_updates(mod_ids, workshop_path, config_file_path):
     """
-    检查模组更新（重新下载即为更新）
+    检查模组更新
+
+    基于以下规则判断：
+    1. 模组目录不存在 → 需要下载
+    2. filelist.xml 不存在 → 需要下载
+    3. 模组目录的修改时间早于配置文件 → 需要更新
+    4. filelist.xml 的修改时间早于配置文件 → 需要更新
 
     Args:
         mod_ids: 模组ID列表
         workshop_path: 创意工坊内容路径
+        config_file_path: Barotrauma 配置文件路径
 
     Returns:
         list: 需要更新的模组ID列表
     """
     needs_update = []
     workshop = Path(workshop_path)
+    config_file = Path(config_file_path)
+
+    # 获取配置文件的修改时间
+    config_mtime = config_file.stat().st_mtime if config_file.exists() else 0
 
     for mod_id in mod_ids:
         mod_path = workshop / mod_id
-        if not mod_path.exists() or not (mod_path / "filelist.xml").exists():
+        filelist_path = mod_path / "filelist.xml"
+
+        # 检查1: 模组目录是否存在
+        if not mod_path.exists():
+            print(f"  模组 {mod_id}: 目录不存在，需要下载")
             needs_update.append(mod_id)
+            continue
+
+        # 检查2: filelist.xml 是否存在
+        if not filelist_path.exists():
+            print(f"  模组 {mod_id}: filelist.xml 不存在，需要更新")
+            needs_update.append(mod_id)
+            continue
+
+        # 检查3: 比较修改时间
+        mod_mtime = mod_path.stat().st_mtime
+        filelist_mtime = filelist_path.stat().st_mtime
+
+        # 如果配置文件比模组目录或 filelist.xml 更新，说明模组需要更新
+        if config_mtime > mod_mtime or config_mtime > filelist_mtime:
+            print(f"  模组 {mod_id}: 配置已更新，需要重新下载")
+            needs_update.append(mod_id)
+        else:
+            print(f"  模组 {mod_id}: 已是最新")
 
     return needs_update
 
@@ -217,7 +250,7 @@ def main():
 
     # 检查需要更新的模组
     print("检查模组更新状态...")
-    update_list = check_mod_updates(mod_ids, workshop_path)
+    update_list = check_mod_updates(mod_ids, workshop_path, config_file)
 
     if update_list:
         print(f"发现 {len(update_list)} 个模组需要更新或下载\n")
