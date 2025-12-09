@@ -7,7 +7,6 @@ Barotrauma 模组自动更新工具
 
 import xml.etree.ElementTree as ET
 import subprocess
-import os
 import re
 import sys
 import json
