@@ -1,6 +1,6 @@
 {
   "steamcmd": {
-    "path": "/Users/sherd/Steam/steamcmd"
+    "path": "/Path/to/steamcmd"
   },
   "files": {
     "config_file": "config_player.xml",
@@ -8,6 +8,6 @@
   },
   "download": {
     "timeout": 300,
-    "max_workers": 3
+    "max_workers": 5
   }
 }
