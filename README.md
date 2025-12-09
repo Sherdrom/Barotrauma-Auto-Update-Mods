@@ -19,8 +19,26 @@
 
 安装 Python 依赖：
 ```bash
-pip3 install requests
+pip3 install -r requirements.txt
 ```
+
+或手动安装：
+```bash
+pip3 install requests urllib3==1.26.18
+```
+
+⚠️ **重要提示**: urllib3 v2 与 macOS 的 LibreSSL 存在兼容性问题。如果看到以下警告：
+```
+NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'
+```
+
+**解决方案**: 使用兼容版本：
+```bash
+pip3 uninstall urllib3 -y
+pip3 install urllib3==1.26.18
+```
+
+这不会影响功能，只是避免烦人的警告信息。
 
 ### 2. 安装 SteamCMD
 

@@ -84,15 +84,30 @@ Uses `config.json` for settings:
 
 ## Dependencies
 
-- Python standard library only (no external packages)
-- Requires system-installed SteamCMD tool
+**Python 第三方库:**
+- `requests` - HTTP 库，用于 Steam Web API 调用
+- `urllib3==1.26.18` - HTTP 客户端（必须使用此版本以兼容 macOS LibreSSL）
+
+**安装依赖:**
+```bash
+pip3 install -r requirements.txt
+```
+
+⚠️ **注意**: urllib3 v2 与 macOS LibreSSL 不兼容，必须使用 1.26.18 版本
+
+**系统工具:**
+- SteamCMD - 用于下载模组（需单独安装）
 
 ## Important Files
 
 - `main.py` - Main script with all functionality
-- `config.json` - Configuration file for customizing paths and settings
+- `config.json` - Configuration file for customizing paths and settings (用户本地配置，不提交到 git)
 - `config_player.xml` - Barotrauma config file containing mod list
+- `requirements.txt` - Python dependencies list
 - `README.md` - Detailed usage documentation
+- `CLAUDE.md` - This file, guidance for Claude Code
+- `start.sh` - Bash startup script
+- `test_parallel.py` - Test script for parallel download feature
 
 ## Mod ID Format
 
