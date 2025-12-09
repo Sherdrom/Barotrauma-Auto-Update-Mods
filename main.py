@@ -133,8 +133,40 @@ def download_mod_steamcmd(mod_id, workshop_path, steamcmd_path="steamcmd", timeo
         )
 
         if result.returncode == 0:
+            # 验证下载是否成功
+            # 检查下载目录是否存在
+            if not steamcmd_download_path.exists():
+                print(f"✗ 模组 {mod_id} 下载失败: SteamCMD 未能创建下载目录")
+                print(f"SteamCMD 输出: {result.stdout}")
+                print(f"SteamCMD 错误: {result.stderr}")
+                return False
+
+            # 检查下载目录是否为空
+            downloaded_files = list(steamcmd_download_path.iterdir())
+            if not downloaded_files:
+                print(f"✗ 模组 {mod_id} 下载失败: SteamCMD 未下载任何文件到预期位置")
+                print(f"SteamCMD 输出: {result.stdout}")
+                print(f"SteamCMD 错误: {result.stderr}")
+                return False
+
+            # 检查 filelist.xml 是否存在（这是模组的关键文件）
+            filelist_path = steamcmd_download_path / "filelist.xml"
+            if not filelist_path.exists():
+                print(f"✗ 模组 {mod_id} 下载失败: filelist.xml 不存在")
+                print(f"下载目录内容: {[f.name for f in downloaded_files]}")
+                print(f"SteamCMD 输出: {result.stdout}")
+                print(f"SteamCMD 错误: {result.stderr}")
+                return False
+
+            # 检查 filelist.xml 是否为空
+            if filelist_path.stat().st_size == 0:
+                print(f"✗ 模组 {mod_id} 下载失败: filelist.xml 为空文件")
+                print(f"SteamCMD 输出: {result.stdout}")
+                print(f"SteamCMD 错误: {result.stderr}")
+                return False
+
             # 将下载的文件移动到最终位置
-            if steamcmd_download_path.exists():
+            try:
                 # 创建最终目录
                 final_mod_path.mkdir(parents=True, exist_ok=True)
 
@@ -148,11 +180,21 @@ def download_mod_steamcmd(mod_id, workshop_path, steamcmd_path="steamcmd", timeo
                             dest.unlink()
                     item.rename(dest)
 
-            print(f"✓ 模组 {mod_id} 下载成功")
-            return True
+                # 验证文件是否成功移动
+                final_filelist = final_mod_path / "filelist.xml"
+                if not final_filelist.exists():
+                    print(f"✗ 模组 {mod_id} 文件移动失败: 最终位置未找到 filelist.xml")
+                    return False
+
+                print(f"✓ 模组 {mod_id} 下载并移动成功")
+                return True
+            except Exception as e:
+                print(f"✗ 模组 {mod_id} 文件移动时出错: {e}")
+                return False
         else:
             print(f"✗ 模组 {mod_id} 下载失败")
-            print(f"错误信息: {result.stderr}")
+            print(f"SteamCMD 错误信息: {result.stderr}")
+            print(f"SteamCMD 输出: {result.stdout}")
             return False
     except subprocess.TimeoutExpired:
         print(f"✗ 模组 {mod_id} 下载超时")
