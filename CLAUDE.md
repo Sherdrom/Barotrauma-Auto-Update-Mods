@@ -20,6 +20,8 @@ The user is a Chinese user, please respond in Chinese.
 - `parse_config_for_mod_ids(config_path)` - 解析XML提取模组ID
 - `check_mod_updates(mod_ids, workshop_path)` - 检查需要更新的模组
 - `download_mod_steamcmd(mod_id, workshop_path, steamcmd_path, timeout)` - 使用SteamCMD下载模组
+- `download_mods_parallel(mod_ids, workshop_path, steamcmd_path, timeout, max_workers)` - 并行下载多个模组
+- `download_single_mod(args)` - 单个模组下载函数（用于多进程）
 - `main()` - 主执行流程
 
 ## Development
@@ -58,10 +60,18 @@ Uses `config.json` for settings:
     "workshop_path": "LocalMods"
   },
   "download": {
-    "timeout": 300
+    "timeout": 300,
+    "max_workers": 3
   }
 }
 ```
+
+**Configuration Parameters:**
+- `steamcmd.path`: SteamCMD 可执行文件路径
+- `files.config_file`: Barotrauma 配置文件路径
+- `files.workshop_path`: 模组下载目录路径
+- `download.timeout`: 每个模组下载超时时间（秒）
+- `download.max_workers`: 并行下载进程数（默认 3，建议 3-5）
 
 ## Architecture
 
@@ -69,6 +79,7 @@ Uses `config.json` for settings:
 - Uses `xml` for XML parsing.etree.ElementTree
 - Uses `json` for configuration management
 - Uses `subprocess` to call SteamCMD
+- Uses `multiprocessing` for parallel downloads (提升 2-4x 性能)
 - Downloads to `LocalMods/` directory structure matching game format
 
 ## Dependencies

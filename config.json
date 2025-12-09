@@ -1,0 +1,13 @@
+{
+  "steamcmd": {
+    "path": "/Users/sherd/Steam/steamcmd"
+  },
+  "files": {
+    "config_file": "config_player.xml",
+    "workshop_path": "LocalMods"
+  },
+  "download": {
+    "timeout": 300,
+    "max_workers": 3
+  }
+}

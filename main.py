@@ -13,6 +13,7 @@ import sys
 import json
 import shutil
 import requests
+import multiprocessing
 from pathlib import Path
 
 
@@ -35,7 +36,8 @@ def load_config(config_path="config.json"):
             "workshop_path": "LocalMods"
         },
         "download": {
-            "timeout": 300
+            "timeout": 300,
+            "max_workers": 3
         }
     }
 
@@ -247,6 +249,59 @@ def get_workshop_update_time(mod_id, timeout=30):
     return 0
 
 
+def download_single_mod(args):
+    """
+    单个模组下载函数（用于多进程）
+
+    Args:
+        args: 包含 (mod_id, workshop_path, steamcmd_path, timeout) 的元组
+
+    Returns:
+        tuple: (mod_id, success_bool)
+    """
+    mod_id, workshop_path, steamcmd_path, timeout = args
+    success = download_mod_steamcmd(mod_id, workshop_path, steamcmd_path, timeout)
+    return (mod_id, success)
+
+
+def download_mods_parallel(mod_ids, workshop_path, steamcmd_path="steamcmd", timeout=300, max_workers=3):
+    """
+    并行下载多个模组
+
+    Args:
+        mod_ids: 模组ID列表
+        workshop_path: 创意工坊内容路径
+        steamcmd_path: SteamCMD 路径
+        timeout: 下载超时时间（秒）
+        max_workers: 最大并发数（建议 3-5）
+
+    Returns:
+        dict: {mod_id: success_bool} 的字典
+    """
+    if not mod_ids:
+        return {}
+
+    # 准备参数列表
+    args_list = [(mod_id, workshop_path, steamcmd_path, timeout) for mod_id in mod_ids]
+
+    print(f"\n开始并行下载 {len(mod_ids)} 个模组（并发数: {max_workers}）...")
+
+    # 使用多进程下载
+    with multiprocessing.Pool(processes=max_workers) as pool:
+        results = pool.map(download_single_mod, args_list)
+
+    # 转换为字典
+    result_dict = {mod_id: success for mod_id, success in results}
+
+    # 统计结果
+    success_count = sum(1 for success in result_dict.values() if success)
+    fail_count = len(result_dict) - success_count
+
+    print(f"\n并行下载完成 - 成功: {success_count}, 失败: {fail_count}")
+
+    return result_dict
+
+
 def check_mod_updates(mod_ids, workshop_path):
     """
     检查模组更新
@@ -312,6 +367,7 @@ def main():
     workshop_path = config["files"]["workshop_path"]
     steamcmd_path = config["steamcmd"]["path"]
     timeout = config["download"]["timeout"]
+    max_workers = config["download"]["max_workers"]
 
     # 以配置文件所在目录为基准解析相对路径
     config_dir = config_path.parent
@@ -325,7 +381,8 @@ def main():
     print(f"使用配置文件: {config_path}")
     print(f"SteamCMD 路径: {steamcmd_path}")
     print(f"模组下载目录: {workshop_path}")
-    print(f"下载超时: {timeout} 秒\n")
+    print(f"下载超时: {timeout} 秒")
+    print(f"并行下载: {max_workers} 个进程\n")
 
     # 检查配置文件是否存在
     config_file_path = Path(config_file)
@@ -356,21 +413,28 @@ def main():
     else:
         print("所有模组都是最新的\n")
 
-    # 下载/更新模组
-    success_count = 0
-    fail_count = 0
+    # 下载/更新模组（并行下载）
+    if update_list:
+        download_results = download_mods_parallel(
+            update_list,
+            workshop_path,
+            steamcmd_path,
+            timeout,
+            max_workers
+        )
 
-    for mod_id in update_list:
-        if download_mod_steamcmd(mod_id, workshop_path, steamcmd_path, timeout):
-            success_count += 1
-        else:
-            fail_count += 1
-        print()  # 空行分隔
+        # 统计结果
+        success_count = sum(1 for success in download_results.values() if success)
+        fail_count = len(download_results) - success_count
 
-    # 汇总结果
-    print("=== 下载完成 ===")
-    print(f"成功: {success_count}")
-    print(f"失败: {fail_count}")
+        # 显示每个模组的下载结果
+        print("\n=== 详细结果 ===")
+        for mod_id, success in download_results.items():
+            status = "✓ 成功" if success else "✗ 失败"
+            print(f"  模组 {mod_id}: {status}")
+    else:
+        success_count = 0
+        fail_count = 0
 
     # 清理临时目录
     steamapps_dir = Path(workshop_path) / "steamapps"
