@@ -12,10 +12,21 @@
 - 使用 Steam Web API 查询模组更新时间，确保准确检测更新
 
 ## 使用方法
-
-### 1. 安装依赖
+### 1.一键启用
+参考下面步骤配置好config.json，使用start.sh启动:
+```bash
+chmod +x ./start.sh
+./start.sh
+```
+### 2.使用python启动
+#### 2.1 安装依赖
 
 确保系统已安装 Python 3.6+。
+激活虚拟环境：
+
+```bash
+source .venv/bin/activate
+```
 
 安装 Python 依赖：
 ```bash
@@ -40,7 +51,7 @@ pip3 install urllib3==1.26.18
 
 这不会影响功能，只是避免烦人的警告信息。
 
-### 2. 安装 SteamCMD
+#### 2.2 安装 SteamCMD
 
 **Windows:**
 - 从 [SteamCMD 官方页面](https://developer.valvesoftware.com/wiki/SteamCMD) 下载 SteamCMD
@@ -61,11 +72,11 @@ wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
 tar -xzf steamcmd_linux.tar.gz
 ```
 
-### 3. 准备配置文件
+#### 2.3 准备配置文件
 
 将您的 `config_player.xml` 文件（位于 Barotrauma 配置目录下）复制到项目目录。
 
-### 4. 配置脚本（可选）
+#### 2.4 配置脚本（可选）
 
 脚本使用 `config.json` 文件进行配置。如果不存在，会自动创建默认配置。
 
@@ -116,7 +127,7 @@ tar -xzf steamcmd_linux.tar.gz
 }
 ```
 
-### 5. 运行脚本
+#### 2.5 运行脚本
 
 ```bash
 python main.py
@@ -219,46 +230,6 @@ python main.py
             └─ 本地最新 → 已是最新
 ```
 
-### 关键改进
-
-**新逻辑基于 Steam 创意工坊更新时间判断，而不是配置文件修改时间。**
-
-原因：
-- 用户可能很久没有修改配置文件，但 Steam 上的模组可能已经更新
-- 正确的判断依据应该是模组在 Steam 创意工坊的最后更新时间
-- 这样可以准确检测模组更新，避免遗漏
-
-### 技术说明：使用 Steam Web API
-
-脚本使用 Steam Web API 查询模组更新时间，而不是 SteamCMD 的 `workshop_info` 命令：
-
-**API 端点**: `https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/`
-
-**优势**:
-- SteamCMD 没有 `workshop_info` 命令
-- Web API 响应更快，格式更标准
-- 可以获取模组的详细元数据（标题、描述、大小等）
-- 不需要启动 SteamCMD 进程，节省系统资源
-
-**实现**:
-```python
-api_url = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/"
-data = {
-    "itemcount": "1",
-    "publishedfileids[0]": mod_id
-}
-result = requests.post(api_url, data=data, headers=headers, timeout=30)
-```
-
-### 优势
-
-- **精确检查**: 基于 Steam 创意工坊真实更新日期
-- **准确更新**: 不受配置文件修改时间影响
-- **节省时间**: 避免不必要的网络传输
-- **节省带宽**: 减少 Steam 服务器负载
-- **详细反馈**: 显示每个模组的检查结果
-- **智能判断**: 基于远程时间戳的准确判断
-
 ## 并行下载功能
 
 🚀 **性能提升**: 脚本支持并行下载多个模组，大幅提升更新效率！
@@ -300,57 +271,6 @@ result = requests.post(api_url, data=data, headers=headers, timeout=30)
 
 *实际时间取决于模组大小和网络速度
 
-### 工作流程
-
-```
-检查更新 → 发现 10 个模组需要更新
-    ↓
-创建 3 个进程（max_workers=3）
-    ↓
-进程 1: 下载模组 1, 4, 7, 10
-进程 2: 下载模组 2, 5, 8
-进程 3: 下载模组 3, 6, 9
-    ↓
-所有进程完成后，汇总结果
-    ↓
-清理临时文件
-```
-
-### 日志输出
-
-并行下载时，脚本会显示：
-- 总的并发数
-- 每个进程的下载进度
-- 最终汇总结果（成功/失败统计）
-- 每个模组的详细状态
-
-```
-开始并行下载 10 个模组（并发数: 3）...
-
-✓ 模组 1234567890 下载并移动成功
-✓ 模组 1234567891 下载并移动成功
-...
-
-并行下载完成 - 成功: 9, 失败: 1
-
-=== 详细结果 ===
-  模组 1234567890: ✓ 成功
-  模组 1234567891: ✓ 成功
-  模组 1234567892: ✗ 失败
-  ...
-```
-
-## 重要说明：路径处理
-
-⚠️ **为什么需要绝对路径？**
-
-SteamCMD 的 `+force_install_dir` 参数如果使用相对路径，会相对于 SteamCMD 所在目录而不是项目目录。这会导致模组下载到错误的位置。
-
-✅ **脚本自动处理**:
-- 自动将配置中的相对路径转换为绝对路径
-- **相对路径以配置文件位置为基准**，不受当前工作目录影响
-- 无论在哪个目录运行脚本，路径都能正确解析
-- 支持在 `config.json` 中使用相对路径或绝对路径
 
 ### 路径解析规则
 
